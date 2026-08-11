@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Record</title>
+
+    <style>
+        body{
+            font-family:Arial;
+            background:#f4f4f4;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+
+        .container{
+            background:white;
+            padding:30px;
+            border-radius:10px;
+            width:400px;
+            box-shadow:0 0 10px rgba(0,0,0,.2);
+        }
+
+        h1{
+            text-align:center;
+        }
+
+        input{
+            width:100%;
+            padding:10px;
+            margin:10px 0;
+            box-sizing:border-box;
+        }
+
+        button{
+            width:100%;
+            padding:12px;
+            background:#007bff;
+            color:white;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+            font-size:16px;
+        }
+
+        button:hover{
+            background:#0056b3;
+        }
+
+        img{
+            display:block;
+            margin:20px auto;
+            max-width:200px;
+            border-radius:10px;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Edit Record</h1>
+
+<img src="<%= image.image %>">
+
+<form action="/edit/<%= image.id %>" method="POST">
+
+<label>Name</label>
+
+<input
+type="text"
+name="name"
+value="<%= image.name %>"
+required>
+
+<label>ID Number</label>
+
+<input
+type="text"
+name="idNumber"
+value="<%= image.idNumber %>"
+required>
+
+<button type="submit">
+Save Changes
+</button>
+
+</form>
+
+</div>
+
+</body>
+</html>
