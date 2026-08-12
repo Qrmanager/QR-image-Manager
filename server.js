@@ -165,7 +165,7 @@ app.post("/upload", upload.single("image"), (req, res) => {
             console.log("==============================");
 
             // QR points to image page
-            const qrLink = 'http://localhost:3000/image/' + imageId;
+            const qrLink = 'https://qr-image-manager.onrender.com/image/' + imageId;
 
             const qrCode = await QRCode.toDataURL(qrLink);
 
