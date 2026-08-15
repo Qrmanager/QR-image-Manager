@@ -3,28 +3,54 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const QRCode = require("qrcode");
+const session = require("express-session");
 const db = require("./database");
 
 const app = express();
 
-// Ensure the uploads directory exists
+// ==============================
+// BASIC SETTINGS
+// ==============================
+
 const uploadDir = path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Use EJS
 app.set("view engine", "ejs");
 
-// Static folders
 app.use(express.static("public"));
-app.use("/uploads", express.static(uploadDir));
-
-// Read form data
 app.use(express.urlencoded({ extended: true }));
 
-// Multer setup
+// ==============================
+// SESSION / LOGIN
+// ==============================
+
+app.use(
+    session({
+        secret: "qr-image-manager-secret-change-this",
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: false,
+            maxAge: 1000 * 60 * 60 * 8 // 8 hours
+        }
+    })
+);
+
+// ==============================
+// ADMIN LOGIN DETAILS
+// ==============================
+
+const ADMIN_USERNAME = "Qr-admin";
+const ADMIN_PASSWORD = "My-Qr-Password123!";
+
+// ==============================
+// MULTER SETUP (THIS WAS MISSING)
+// ==============================
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadDir);
@@ -36,160 +62,184 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Home page
-app.get("/", (req, res) => {
+// ==============================
+// LOGIN PROTECTION
+// ==============================
+
+function requireLogin(req, res, next) {
+    if (req.session.loggedIn) {
+        return next();
+    }
+    res.redirect("/login");
+}
+
+// ==============================
+// LOGIN PAGE
+// ==============================
+
+app.get("/login", (req, res) => {
+    if (req.session.loggedIn) {
+        return res.redirect("/gallery");
+    }
+    res.render("login", { error: null });
+});
+
+// ==============================
+// HANDLE LOGIN
+// ==============================
+
+app.post("/login", (req, res) => {
+    const { username, password } = req.body;
+
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        req.session.loggedIn = true;
+        return res.redirect("/gallery");
+    }
+
+    res.render("login", {
+        error: "Incorrect username or password."
+    });
+});
+
+// ==============================
+// LOGOUT
+// ==============================
+
+app.get("/logout", (req, res) => {
+    req.session.destroy(() => {
+        res.redirect("/login");
+    });
+});
+
+// ==============================
+// HOME PAGE
+// ==============================
+
+app.get("/", requireLogin, (req, res) => {
     res.render("index");
 });
 
-// Upload page
-app.get("/upload", (req, res) => {
+// ==============================
+// UPLOAD PAGE
+// ==============================
+
+app.get("/upload", requireLogin, (req, res) => {
     res.render("upload");
 });
 
-// Gallery page (with search functionality)
-app.get("/gallery", (req, res) => {
-    const search = req.query.search || "";
+// ==============================
+// HANDLE IMAGE UPLOAD + QR
+// ==============================
 
-    const sql = "SELECT * FROM images WHERE name LIKE ? OR idNumber LIKE ? ORDER BY id DESC";
-
-    db.all(sql, ["%" + search + "%", "%" + search + "%"], (err, rows) => {
-        if (err) {
-            return res.status(500).send("Database Error");
+app.post("/upload", requireLogin, upload.single("image"), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).send("No file uploaded.");
         }
 
-        res.render("gallery", {
-            images: rows,
-            search: search
-        });
-    });
-});
+        const name = req.body.name;
+        const idNumber = req.body.idNumber;
+        const filename = req.file.filename;
 
-// Delete image route
-app.post("/delete/:id", (req, res) => {
-    const id = req.params.id;
+        // Temporary local URL (we will update after getting DB id)
+        const imageURL = `/uploads/${filename}`;
 
-    // 1. Get image info from database to find file path
-    db.get("SELECT * FROM images WHERE id = ?", [id], (err, row) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send("Database Error");
-        }
+        // Save to database first
+        db.run(
+            "INSERT INTO images (name, idNumber, image, qr) VALUES (?, ?, ?, ?)",
+            [name, idNumber, imageURL, ""],
+            async function (err) {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).send("Database Error");
+                }
 
-        if (!row) {
-            return res.redirect("/gallery");
-        }
+                const imageId = this.lastID;
 
-        // 2. Delete the physical image file from uploads folder correctly
-        const filePath = path.join(uploadDir, path.basename(row.image));
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
+                // Public QR link (works on Render)
+                const qrLink = `https://qr-image-manager.onrender.com/image/${imageId}`;
 
-        // 3. Delete record from database
-        db.run("DELETE FROM images WHERE id = ?", [id], (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).send("Database Error");
+                try {
+                    const qrCode = await QRCode.toDataURL(qrLink);
+                    // Update the QR code in database
+                    db.run(
+                        "UPDATE images SET qr = ? WHERE id = ?",
+                        [qrCode, imageId],
+                        (updateErr) => {
+                            if (updateErr) {
+                                console.error(updateErr);
+                            }
+
+                            res.render("result", {
+                                name,
+                                idNumber,
+                                image: imageURL,
+                                qr: qrCode
+                            });
+                        }
+                    );
+                } catch (qrError) {
+                    console.error(qrError);
+                    return res.status(500).send("QR code generation failed.");
+                }
             }
-
-            // 4. Redirect back to gallery
-            res.redirect("/gallery");
-        });
-    });
+        );
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("An error occurred.");
+    }
 });
 
-// Show only the uploaded image when QR is scanned
+// ==============================
+// CONTROLLED IMAGE ROUTE (Security)
+// ==============================
 app.get("/image/:id", (req, res) => {
     const id = req.params.id;
 
-    db.get(
-        "SELECT * FROM images WHERE id = ?",
-        [id],
-        (err, row) => {
-            if (err) {
-                return res.status(500).send("Database Error");
-            }
-
-            if (!row) {
-                return res.status(404).send("Image not found");
-            }
-
-            const htmlResponse = '<!DOCTYPE html>' +
-            '<html>' +
-            '<head>' +
-            '    <title>Image</title>' +
-            '    <style>' +
-            '        body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f5;}' +
-            '        img{max-width:95%;max-height:95%;}' +
-            '    </style>' +
-            '</head>' +
-            '<body>' +
-            '    <img src="' + row.image + '">' +
-            '</body>' +
-            '</html>';
-
-            res.send(htmlResponse);
+    db.get("SELECT * FROM images WHERE id = ?", [id], (err, row) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).send("Database error");
         }
-    );
+
+        if (!row) {
+            return res.status(404).send("Image not found");
+        }
+
+        // Get only the filename (works whether it's stored as "123.jpg" or "/uploads/123.jpg")
+        const filename = path.basename(row.image);
+        const filePath = path.join(uploadDir, filename);
+
+        console.log("Trying to serve file:", filePath); // helpful for debugging
+
+        if (!fs.existsSync(filePath)) {
+            console.log("File does not exist:", filePath);
+            return res.status(404).send("File not found");
+        }
+
+        res.sendFile(filePath);
+    });
+});
+// ==============================
+// GALLERY PAGE (example)
+// ==============================
+
+app.get("/gallery", requireLogin, (req, res) => {
+    db.all("SELECT * FROM images ORDER BY id DESC", [], (err, rows) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
+        }
+        res.render("gallery", { images: rows });
+    });
 });
 
-// Upload image and generate QR
-app.post("/upload", upload.single("image"), (req, res) => {
+// ==============================
+// START SERVER
+// ==============================
 
-    if (!req.file) {
-        return res.status(400).send("No file uploaded.");
-    }
-
-    const name = req.body.name;
-    const idNumber = req.body.idNumber;
-
-    // Save image path
-    const imageURL = '/uploads/' + req.file.filename;
-
-    db.run(
-        "INSERT INTO images (name, idNumber, image, qr) VALUES (?, ?, ?, ?)",
-        [name, idNumber, imageURL, ""],
-        async function (err) {if (err) {
-                console.error(err);
-                return res.status(500).send("Database Error");
-            }
-
-            const imageId = this.lastID;
-
-            console.log("==============================");
-            console.log("Image saved successfully!");
-            console.log("Database ID:", imageId);
-            console.log("Name:", name);
-            console.log("ID Number:", idNumber);
-            console.log("Image:", imageURL);
-            console.log("==============================");
-
-            // QR points to image page
-            const qrLink = 'https://qr-image-manager.onrender.com/image/' + imageId;
-
-            const qrCode = await QRCode.toDataURL(qrLink);
-
-            // Save QR into database
-            db.run(
-                "UPDATE images SET qr = ? WHERE id = ?",
-                [qrCode, imageId]
-            );
-
-            res.render("result", {
-                name,
-                idNumber,
-                image: imageURL,
-                qr: qrCode
-            });
-
-        }
-    );
-
-});
-
-// Start server
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log("Server running on port " + PORT);
 });

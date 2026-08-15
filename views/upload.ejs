@@ -1,34 +1,150 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Image - QR Image Manager</title>
     <link rel="stylesheet" href="/style.css">
+
+    <style>
+        body {
+            background: #f4f7fa;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .upload-container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .upload-container h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            color: #1e88e5;
+        }
+
+        .upload-container p {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="file"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 11px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #1e88e5;
+        }
+
+        .upload-button {
+            width: 100%;
+            padding: 13px;
+            background: #1e88e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .upload-button:hover {
+            background: #1565c0;
+        }
+
+        .back-link,
+        .logout-link {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            text-decoration: none;
+            font-size: 15px;
+        }
+
+        .back-link {
+            color: #1e88e5;
+        }
+
+        .logout-link {
+            color: #dc3545;
+            margin-top: 8px;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="upload-container">
         <h1>Upload Image</h1>
-        <p>Fill in the details and select an image.</p>
+        <p>Add a person's details and upload their image.</p>
 
         <form action="/upload" method="POST" enctype="multipart/form-data">
-            
-            <label>Person's Name:</label><br>
-            <input type="text" name="name" required placeholder="Enter full name">
-            <br><br>
 
-            <label>ID Number:</label><br>
-            <input type="text" name="idNumber" required placeholder="Enter ID number">
-            <br><br>
+            <div class="form-group">
+                <label for="name">Person's Name:</label>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    required
+                    placeholder="Enter full name"
+                >
+            </div>
 
-            <label>Select Image:</label><br>
-            <input type="file" name="image" accept="image/*" required>
-            <br><br>
+            <div class="form-group">
+                <label for="idNumber">ID Number:</label>
+                <input
+                    type="text"
+                    id="idNumber"
+                    name="idNumber"
+                    required
+                    placeholder="Enter ID number"
+                >
+            </div>
 
-            <button type="submit">Upload & Generate QR Code</button>
+            <div class="form-group">
+                <label for="image">Select Image:</label>
+                <input
+                    type="file"
+                    id="image"
+                    name="image"
+                    accept="image/*"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="upload-button">
+                Upload & Generate QR Code
+            </button>
         </form>
 
-        <br><br>
-        <a href="/">← Back to Home</a>
+        <a href="/gallery" class="back-link">← Back to Gallery</a>
+        <a href="/logout" class="logout-link">Logout</a>
     </div>
 
 </body>
