@@ -231,23 +231,6 @@ app.get("/image/:id", (req, res) => {
             return res.status(404).send("Image not found");
         }
 
-        res.render("view-image", {
-            id: id,
-            name: row.name,
-            idNumber: row.idNumber
-        });
-    });
-});
-
-// Actual image file (used by the page above)
-app.get("/image-file/:id", (req, res) => {
-    const id = req.params.id;
-
-    db.get("SELECT * FROM images WHERE id = ?", [id], (err, row) => {
-        if (err || !row) {
-            return res.status(404).send("Image not found");
-        }
-
         const filename = path.basename(row.image);
         const filePath = path.join(uploadDir, filename);
 
