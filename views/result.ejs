@@ -3,35 +3,74 @@
 <head>
     <title>Upload Successful</title>
     <link rel="stylesheet" href="/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #1e88e5;
+            margin-bottom: 20px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        button {
+            background: #1e88e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 8px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        a {
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Upload Successful!</h1>
 
-<div class="container">
-    <h1>Upload Successful!</h1>
+        <p><strong>Name:</strong> <%= name %></p>
+        <p><strong>ID Number:</strong> <%= idNumber %></p>
 
-    <p><strong>Name:</strong> <%= name %></p>
-    <p><strong>ID Number:</strong> <%= idNumber %></p>
+        <h2>Uploaded Image</h2>
+        <img src="<%= image %>" alt="Uploaded Image">
 
-    <h2>Uploaded Image</h2>
-    <img src="<%= image %>" width="300" alt="Uploaded Image">
+        <h2>QR Code</h2>
+        <img src="<%= qr %>" alt="QR Code" width="250">
 
-    <h2>QR Code</h2>
-    <img src="<%= qr %>" width="300" alt="QR Code">
+        <br><br>
 
-    <br><br>
+        <a href="<%= qr %>" download="qrcode.png">
+            <button type="button">Download QR Code</button>
+        </a>
 
-    <!-- Download QR Code Button -->
-    <a href="<%= qr %>" download="qrcode.png">
-        <button type="button">Download QR Code</button>
-    </a>
+        <br><br>
 
-    <br><br>
-
-    <a href="/upload">
-        <button type="button">Upload Another Image</button>
-    </a>
-
-</div>
-
+        <a href="/upload">
+            <button type="button">Upload Another Image</button>
+        </a>
+    </div>
 </body>
 </html>
