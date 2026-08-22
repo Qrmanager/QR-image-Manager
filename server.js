@@ -223,23 +223,90 @@ app.post(
 // PUBLIC IMAGE ROUTE
 // ==============================
 // Nice page when scanning QR code
-app.get("/image/:id", (req, res) => {
+app.get("/view/:id", (req, res) => {
     const id = req.params.id;
 
-    db.get("SELECT * FROM images WHERE id = ?", [id], (err, row) => {
-        if (err || !row) {
-            return res.status(404).send("Image not found");
+    db.get(
+        "SELECT image FROM images WHERE id = ?",
+        [id],
+        (err, row) => {
+            if (err) {
+                console.error("Database error:", err);
+                return res.status(500).send("Database error");
+            }
+
+            if (!row) {
+                return res.status(404).send("Image not found");
+            }
+
+            const filename = path.basename(row.image);
+            const filePath = path.join(uploadDir, filename);
+
+            if (!fs.existsSync(filePath)) {
+                return res.status(404).send("Image file not found");
+            }
+
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Image</title>
+                    <style>
+                        html, body {
+                            margin: 0;
+                            padding: 0;
+                            width: 100%;
+                            min-height: 100%;
+                            background: black;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
+
+                        img {
+                            display: block;
+                            width: 100%;
+                            height: auto;
+                            max-width: 100%;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <img src="/file/${id}" alt="Image">
+                </body>
+                </html>
+            `);
         }
+    );
+});
 
-        const filename = path.basename(row.image);
-        const filePath = path.join(uploadDir, filename);
+app.get("/file/:id", (req, res) => {
+    const id = req.params.id;
 
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).send("Image file not found");
+    db.get(
+        "SELECT image FROM images WHERE id = ?",
+        [id],
+        (err, row) => {
+            if (err) {
+                console.error("Database error:", err);
+                return res.status(500).send("Database error");
+            }
+
+            if (!row) {
+                return res.status(404).send("Image not found");
+            }
+
+            const filename = path.basename(row.image);
+            const filePath = path.join(uploadDir, filename);
+
+            if (!fs.existsSync(filePath)) {
+                return res.status(404).send("Image file not found");
+            }
+
+            res.sendFile(filePath);
         }
-
-        res.sendFile(filePath);
-    });
+    );
 });
 
 // ==============================
