@@ -169,7 +169,7 @@ app.post(
 
                     const imageId = this.lastID;
 
-                    // PUBLIC Render URL pointing to /view/
+                    // PUBLIC Render URL
                     const qrLink = "https://qr-image-manager.onrender.com/view/" + imageId;
 
                     try {
@@ -220,7 +220,7 @@ app.post(
 );
 
 // ==============================
-// PUBLIC VIEW ROUTE (HTML Page)
+// PUBLIC VIEW ROUTE (HTML Page with Image)
 // ==============================
 
 app.get("/view/:id", (req, res) => {
@@ -239,13 +239,6 @@ app.get("/view/:id", (req, res) => {
                 return res.status(404).send("Image not found");
             }
 
-            const filename = path.basename(row.image);
-            const filePath = path.join(uploadDir, filename);
-
-            if (!fs.existsSync(filePath)) {
-                return res.status(404).send("Image file not found");
-            }
-
             const htmlResponse =
                 "<!DOCTYPE html>" +
                 "<html>" +
@@ -253,8 +246,21 @@ app.get("/view/:id", (req, res) => {
                 "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
                 "<title>Image</title>" +
                 "<style>" +
-                "html, body { margin:0; padding:0; background:black; width:100%; min-height:100%; }" +
-                "img { display:block; width:100%; height:auto; }" +
+                "html, body {" +
+                "margin: 0;" +
+                "padding: 0;" +
+                "background: #ffffff;" +
+                "width: 100%;" +
+                "min-height: 100vh;" +
+                "display: flex;" +
+                "justify-content: center;" +
+                "align-items: center;" +
+                "}" +
+                "img {" +
+                "max-width: 95%;" +
+                "max-height: 95vh;" +
+                "object-fit: contain;" +
+                "}" +
                 "</style>" +
                 "</head>" +
                 "<body>" +
@@ -316,6 +322,101 @@ app.get("/gallery", requireLogin, (req, res) => {
             res.render("gallery", {
                 images: rows
             });
+        }
+    );
+});
+
+// ==============================
+// EDIT PAGE
+// ==============================
+
+app.get("/edit/:id", requireLogin, (req, res) => {
+    const id = req.params.id;
+
+    db.get(
+        "SELECT * FROM images WHERE id = ?",
+        [id],
+        (err, row) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send("Database Error");
+            }
+
+            if (!row) {
+                return res.redirect("/gallery");
+            }
+
+            res.render("edit", {
+                image: row
+            });
+        }
+    );
+});
+
+// ==============================
+// SAVE EDIT
+// ==============================
+
+app.post("/edit/:id", requireLogin, (req, res) => {
+    const id = req.params.id;
+    const name = req.body.name;
+    const idNumber = req.body.idNumber;
+
+    db.run(
+        "UPDATE images SET name = ?, idNumber = ? WHERE id = ?",
+        [name, idNumber, id],
+        (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send("Database Error");
+            }
+
+            res.redirect("/gallery");
+        }
+    );
+});
+
+// ==============================
+// DELETE IMAGE
+// ==============================
+
+app.post("/delete/:id", requireLogin, (req, res) => {
+    const id = req.params.id;
+
+    db.get(
+        "SELECT * FROM images WHERE id = ?",
+        [id],
+        (err, row) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send("Database Error");
+            }
+
+            if (!row) {
+                return res.redirect("/gallery");
+            }
+
+            const filePath = path.join(
+                uploadDir,
+                path.basename(row.image)
+            );
+
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+
+            db.run(
+                "DELETE FROM images WHERE id = ?",
+                [id],
+                (err) => {
+                    if (err) {
+                        console.error(err);
+                        return res.status(500).send("Database Error");
+                    }
+
+                    res.redirect("/gallery");
+                }
+            );
         }
     );
 });
