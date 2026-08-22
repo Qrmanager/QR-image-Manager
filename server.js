@@ -169,8 +169,8 @@ app.post(
 
                     const imageId = this.lastID;
 
-                    // Public URL for QR Code
-                    const qrLink = "https://qr-image-manager.onrender.com/image/" + imageId;
+                    // PUBLIC Render URL pointing to /view/
+                    const qrLink = "https://qr-image-manager.onrender.com/view/" + imageId;
 
                     try {
                         // Generate QR code
@@ -193,11 +193,11 @@ app.post(
                                 }
 
                                 res.render("result", {
-    name: name,
-    idNumber: idNumber,
-    image: "https://qr-image-manager.onrender.com/image/" + imageId,
-    qr: qrCode
-});
+                                    name: name,
+                                    idNumber: idNumber,
+                                    image: "/file/" + imageId,
+                                    qr: qrCode
+                                });
                             }
                         );
                     } catch (qrError) {
@@ -220,9 +220,9 @@ app.post(
 );
 
 // ==============================
-// PUBLIC IMAGE ROUTE
+// PUBLIC VIEW ROUTE (HTML Page)
 // ==============================
-// Nice page when scanning QR code
+
 app.get("/view/:id", (req, res) => {
     const id = req.params.id;
 
@@ -246,40 +246,30 @@ app.get("/view/:id", (req, res) => {
                 return res.status(404).send("Image file not found");
             }
 
-            res.send(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Image</title>
-                    <style>
-                        html, body {
-                            margin: 0;
-                            padding: 0;
-                            width: 100%;
-                            min-height: 100%;
-                            background: black;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                        }
+            const htmlResponse =
+                "<!DOCTYPE html>" +
+                "<html>" +
+                "<head>" +
+                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                "<title>Image</title>" +
+                "<style>" +
+                "html, body { margin:0; padding:0; background:black; width:100%; min-height:100%; }" +
+                "img { display:block; width:100%; height:auto; }" +
+                "</style>" +
+                "</head>" +
+                "<body>" +
+                "<img src='/file/" + id + "' alt='Image'>" +
+                "</body>" +
+                "</html>";
 
-                        img {
-                            display: block;
-                            width: 100%;
-                            height: auto;
-                            max-width: 100%;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <img src="/file/${id}" alt="Image">
-                </body>
-                </html>
-            `);
+            res.send(htmlResponse);
         }
     );
 });
+
+// ==============================
+// PUBLIC FILE ROUTE (Raw Image File)
+// ==============================
 
 app.get("/file/:id", (req, res) => {
     const id = req.params.id;
